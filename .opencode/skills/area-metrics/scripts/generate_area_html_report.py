@@ -49,6 +49,20 @@ FOCUS_METRICS = [
     {"key": "人均价值积分", "title": "人均价值积分", "kind": "number"},
 ]
 REQUIRED_COLUMNS = {"地市"}
+REPORT_KINDS = {
+    "standard": {
+        "title": "地市随销统计报表",
+        "html_title": "地市随销统计报表",
+        "filename_prefix": "地市随销统计",
+        "date_label": "数据日期",
+    },
+    "monthly": {
+        "title": "各地市随销月累计报表",
+        "html_title": "各地市随销月累计报表",
+        "filename_prefix": "各地市随销月累计报表",
+        "date_label": "截至日期",
+    },
+}
 
 
 def project_root() -> Path:
@@ -522,10 +536,15 @@ def render_table(rows: list[dict], grouped_columns: list[dict], singles: list[di
     """
 
 
-def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], singles: list[dict]) -> str:
+def report_config(report_kind: str) -> dict:
+    return REPORT_KINDS.get(report_kind, REPORT_KINDS["standard"])
+
+
+def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], singles: list[dict], report_kind: str = "standard") -> str:
     acct_day, month_id = parse_dates(source)
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     title_date = format_day(acct_day) if acct_day else "最新"
+    config = report_config(report_kind)
     headers = ["地市"]
     for col in grouped_columns:
         if "children" in col:
@@ -541,7 +560,7 @@ def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], sin
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>地市随销统计报表_{escape(acct_day or "latest")}</title>
+  <title>{escape(config["html_title"])}_{escape(acct_day or "latest")}</title>
   <style>
     * {{ box-sizing: border-box; }}
     body {{
@@ -873,8 +892,8 @@ def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], sin
   <main class="page">
     <header class="title-row">
       <div>
-        <h1>地市随销统计报表</h1>
-        <div class="subtitle">数据日期：{escape(title_date)}　账期：{escape(month_id or "-")}</div>
+        <h1>{escape(config["title"])}</h1>
+        <div class="subtitle">{escape(config["date_label"])}：{escape(title_date)}　账期：{escape(month_id or "-")}</div>
       </div>
       <div class="meta">
         <div>生成时间：{escape(generated_at)}</div>
@@ -897,10 +916,11 @@ def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], sin
 """
 
 
-def default_output_path(root: Path, source: Path) -> Path:
+def default_output_path(root: Path, source: Path, report_kind: str = "standard") -> Path:
     acct_day, _ = parse_dates(source)
     suffix = acct_day or datetime.now().strftime("%Y%m%d")
-    return root / "output" / f"地市随销统计_{suffix}.html"
+    prefix = report_config(report_kind)["filename_prefix"]
+    return root / "output" / f"{prefix}_{suffix}.html"
 
 
 def main() -> None:
@@ -908,6 +928,12 @@ def main() -> None:
     parser.add_argument("--input", help="地市汇总 Excel；默认读取 temp/data/area 本轮下载 xlsx")
     parser.add_argument("--area-dir", default="temp/data/area")
     parser.add_argument("--output", help="HTML 输出路径；默认 output/地市随销统计_{acct_day}.html")
+    parser.add_argument(
+        "--report-kind",
+        choices=sorted(REPORT_KINDS),
+        default="standard",
+        help="报表类型：standard=地市随销统计报表，monthly=各地市随销月累计报表",
+    )
     args = parser.parse_args()
 
     root = project_root()
@@ -932,11 +958,14 @@ def main() -> None:
         if not output.is_absolute():
             output = root / output
     else:
-        output = default_output_path(root, source)
+        output = default_output_path(root, source, args.report_kind)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(render_html(source, rows, grouped_columns, singles), encoding="utf-8")
+    output.write_text(
+        render_html(source, rows, grouped_columns, singles, args.report_kind),
+        encoding="utf-8",
+    )
 
-    print("=== 地市随销统计 HTML 报表 ===")
+    print(f"=== {report_config(args.report_kind)['title']} ===")
     print(f"来源文件: {source}")
     print(f"输出文件: {output}")
     print(f"数据行数: {len(rows)}")
