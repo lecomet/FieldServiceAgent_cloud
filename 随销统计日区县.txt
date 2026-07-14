@@ -1,0 +1,169 @@
+-- =====================================================
+-- 区县级别统计（MySQL 5.7 兼容）
+-- 账期：202607，日期：2026-07-01
+-- 分组：city_no（区县编码），city_name（区县名称）
+-- 无全省汇总行
+-- =====================================================
+
+SELECT
+  b.city_no,
+  b.city_name,
+  b.zdkdZwTotal, b.zdkdTotal, b.zdkdZwRate,
+  b.ydZwTotal, b.ydTotal, b.ydZwRate,
+  b.fttrHZwTotal, b.fttrHTotal, b.fttrHZwRate,
+  b.fttrBZwTotal, b.fttrBTotal, b.fttrBZwRate,
+  b.fttrHbZwTotal, b.fttrHbTotal, b.fttrHbZwRate,
+  b.rhzk151ZwTotal, b.rhzk151Total, b.rhzk151ZwRate,
+  IFNULL(p.fzPoint, 0) AS fzPoint,
+  IFNULL(p.yyPoint, 0) AS yyPoint,
+  IFNULL(p.fzPoint, 0) + IFNULL(p.yyPoint, 0) AS sumPoint,
+  IFNULL(ps.total_people_all, 0) AS total_people_all,     -- 含班长
+  IFNULL(ps.total_people_eff, 0) AS total_people_eff,     -- 不含班长
+  ROUND(
+    (IFNULL(p.fzPoint, 0) + IFNULL(p.yyPoint, 0)) / IFNULL(ps.total_people_eff, 1),
+    2
+  ) AS avg_value_point,
+  ROUND(
+    b.fttrHbTotal / IFNULL(ps.total_people_eff, 1),
+    2
+  ) AS avg_fttr_hb
+FROM (
+  -- ===== 业务数据（区县） =====
+  SELECT
+    city_no,
+    city_name,
+    zdkdZwTotal, zdkdTotal, zdkdZwRate,
+    ydZwTotal, ydTotal, ydZwRate,
+    fttrHZwTotal, fttrHTotal, fttrHZwRate,
+    fttrBZwTotal, fttrBTotal, fttrBZwRate,
+    fttrHbZwTotal, fttrHbTotal, fttrHbZwRate,
+    rhzk151ZwTotal, rhzk151Total, rhzk151ZwRate
+  FROM (
+    -- 区县明细
+    SELECT
+      t1.city_no,
+      t1.city_name,
+      t1.zdkdZwTotal,
+      t2.zdkdTotal,
+      IFNULL(ROUND(t1.zdkdZwTotal / t2.zdkdTotal, 3), 0) AS zdkdZwRate,
+      t1.ydZwTotal,
+      t2.ydTotal,
+      IFNULL(ROUND(t1.ydZwTotal / t2.ydTotal, 3), 0) AS ydZwRate,
+      t1.fttrHZwTotal,
+      t2.fttrHTotal,
+      IFNULL(ROUND(t1.fttrHZwTotal / t2.fttrHTotal, 3), 0) AS fttrHZwRate,
+      t1.fttrBZwTotal,
+      t2.fttrBTotal,
+      IFNULL(ROUND(t1.fttrBZwTotal / t2.fttrBTotal, 3), 0) AS fttrBZwRate,
+      (t1.fttrHZwTotal + t1.fttrBZwTotal) AS fttrHbZwTotal,
+      (t2.fttrHTotal + t2.fttrBTotal) AS fttrHbTotal,
+      IFNULL(ROUND((t1.fttrHZwTotal + t1.fttrBZwTotal) / (t2.fttrHTotal + t2.fttrBTotal), 3), 0) AS fttrHbZwRate,
+      t1.rhzk151ZwTotal,
+      t2.rhzk151Total,
+      IFNULL(ROUND(t1.rhzk151ZwTotal / t2.rhzk151Total, 3), 0) AS rhzk151ZwRate
+    FROM (
+      -- 装维子查询（区县）
+      SELECT
+        city_no,
+        city_name,
+        SUM(kd) AS zdkdZwTotal,
+        SUM(yd) AS ydZwTotal,
+        SUM(qwzn_fttr) AS fttrHZwTotal,
+        SUM(fttrb) AS fttrBZwTotal,
+        SUM(rhzk151) AS rhzk151ZwTotal
+      FROM dwv_d_smr_user_list_result_merge a
+      LEFT JOIN (
+        SELECT staff_id, month_id, attr_value, responsible_area
+        FROM dim_staff_zw10_zw t1
+        LEFT JOIN emp_employee_ext_month t2 ON t1.emp_id = t2.emp_id AND t1.month_id = t2.month
+        WHERE t1.is_off = 1 AND month_id = '202607' AND t2.zw_type IS NOT NULL
+      ) b ON a.dvlp_staff_id = b.staff_id AND a.new_month = b.month_id
+      WHERE a.dvlp_staff_id = b.staff_id
+        AND b.attr_value IN ('10','20','50','72','73','200')
+        AND a.new_month = '202607'
+        AND a.new_date >= '2026-07-01' AND a.new_date <= '2026-07-01'
+        AND a.is_zw = 1
+      GROUP BY city_no, city_name
+    ) t1
+    LEFT JOIN (
+      -- 全量子查询（区县）
+      SELECT
+        city_no,
+        city_name,
+        SUM(kd) AS zdkdTotal,
+        SUM(yd) AS ydTotal,
+        SUM(qwzn_fttr) AS fttrHTotal,
+        SUM(fttrb) AS fttrBTotal,
+        SUM(rhzk151) AS rhzk151Total
+      FROM dwv_d_smr_user_list_result_merge
+      WHERE new_month = '202607'
+        AND new_date >= '2026-07-01' AND new_date <= '2026-07-01'
+      GROUP BY city_no, city_name
+    ) t2 ON t1.city_no = t2.city_no
+  ) tmp
+) b
+LEFT JOIN (
+  -- ===== 积分数据（区县） =====
+  SELECT
+    zw.city_no,
+    IFNULL(SUM(a.fz_point), 0) AS fzPoint,
+    IFNULL(SUM(a.yy_point), 0) AS yyPoint
+  FROM dwv_d_hrt_zw_point_zw_merge a
+  LEFT JOIN (
+    SELECT staff_num, month_id, city_no
+    FROM dim_staff_zw10_zw
+    WHERE month_id = '202607'
+      AND is_off = '1'
+  ) zw ON a.staff_num = zw.staff_num
+  WHERE a.staff_num = zw.staff_num
+    AND (IFNULL(a.fz_point,0) != 0 OR IFNULL(a.yy_point,0) != 0)
+    AND a.attr_value IS NOT NULL
+    AND a.acct_day >= '20260701' AND a.acct_day <= '20260701'
+    AND zw.month_id = '202607'
+    AND a.attr_value IN ('10','20','50','72','73','200')
+  GROUP BY zw.city_no
+) p ON b.city_no = p.city_no
+LEFT JOIN (
+  -- ===== 人数子查询（区县，交维使用 zw.city_no，实习使用 emp.ext8） =====
+  SELECT
+    area_no AS city_no,
+    SUM(total_people_all) AS total_people_all,
+    SUM(total_people_eff) AS total_people_eff
+  FROM (
+    -- 交维人员（使用 zw.city_no）
+    SELECT
+      zw.city_no AS area_no,
+      COUNT(DISTINCT zw.staff_num) AS total_people_all,
+      COUNT(DISTINCT CASE WHEN zw.attr_value != '20' THEN zw.staff_num END) AS total_people_eff
+    FROM emp_employee_ext_month emp
+    LEFT JOIN dim_staff_zw10_zw zw ON zw.emp_id = emp.emp_id AND emp.month = zw.month_id
+    LEFT JOIN (
+      SELECT DISTINCT code, jobname
+      FROM wb_ps_msg_zw
+      WHERE jobname IN ('智能云服务交付工程师','智能云服务交付工程师#','智慧家庭工程师','云网标品交付维护能力建设','云网标品交付维护组织')
+        AND month_id = '202606'
+    ) wb ON zw.clerkcode = wb.code
+    WHERE emp.ext1 = 1
+      AND emp.is_confirm = 1
+      AND zw.is_off = 1
+      AND zw.attr_value IN ('10','20','50','72','73')
+      AND zw.month_id = '202607'
+      AND wb.code IS NOT NULL
+    GROUP BY zw.city_no
+
+    UNION ALL
+
+    -- 实习人员（使用 emp.ext8）
+    SELECT
+      emp.ext8 AS area_no,
+      COUNT(DISTINCT emp.ext18) AS total_people_all,
+      COUNT(DISTINCT emp.ext18) AS total_people_eff
+    FROM emp_employee_ext_month emp
+    WHERE emp.ext1 = 2
+      AND emp.intern_start_time <= '2026-04-01'   -- 实习超过3个月
+      AND emp.month = '202607'
+    GROUP BY emp.ext8
+  ) t
+  GROUP BY area_no
+) ps ON b.city_no = ps.city_no
+ORDER BY b.city_no;

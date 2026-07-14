@@ -1,3 +1,4 @@
+.DS_Store
 .env
 .env.*
 .bi_credentials
@@ -5,8 +6,17 @@
 .secrets/
 *.local.json
 push_config.local.json
+.opencode/skills/push-sender/
+.opencode/skills/area-metrics/scripts/generate_and_push_area_report.py
 __pycache__/
 *.pyc
-output/.chrome-report-profile/
+output/
+outputs/
+temp/
+tools/
 temp/output/*.log
 temp/output/*.tmp
+*.xlsx
+*.xls
+*.csv
+*.jar
