@@ -1,0 +1,119 @@
+SELECT t3.areaNo,
+       cityNo,
+       staffId,
+       staffName,
+       attrValue,
+       zwType,
+       responsibleArea,
+       toSysDate,
+       ydTotal,
+       zdkdTotal,
+       qwWiFiServerTotal,
+       qwWiFiTerminalTotal,
+       tygqTotal,
+       tykjTotal,
+       znjjTotal,
+       znjjFTTRTotal,
+       fttrYfTotal,
+       fttrbTotal,
+       sqznzwTotal,
+       rhzk151Total,
+       tyzpTotal,
+       ydTotal + zdkdTotal + qwWiFiServerTotal + qwWiFiTerminalTotal + tygqTotal + tykjTotal + znjjTotal + znjjFTTRTotal + fttrYfTotal + sqznzwTotal + fttrbTotal + rhzk151Total + tyzpTotal AS qywTotal,
+       ROUND((zdkdTotal * 0.5) + (qwWiFiTerminalTotal * 0.25) + znjjFttrTotal + (sqznzwTotal * 0.25 * 1.5) + (fttrbTotal * 1.5), 1) AS zslTotal,
+       ROUND(((qwWiFiTerminalTotal * 0.25) + znjjFttrTotal + (sqznzwTotal * 0.25 * 1.5) + (fttrbTotal * 1.5)) * 60, 2) AS jzPoint,
+       IFNULL(t2.yyPoint, 0) AS yyPoint,
+       IFNULL(t2.fzPoint, 0) AS fzPoint,
+       IFNULL(t2.sumPoint, 0) AS sumPoint,
+       ROUND(IFNULL(t2.fzPoint, 0) + (((qwWiFiTerminalTotal * 0.25) + znjjFttrTotal + (sqznzwTotal * 0.25 * 1.5) + (fttrbTotal * 1.5)) * 60), 2) AS pjPoint
+FROM
+  (SELECT areaNo AS areaNo,
+          cityNo AS cityNo,
+          staff_num AS staffId,
+          staff_name AS staffName,
+          zwType,
+          responsibleArea,
+          toSysDate,
+          CASE
+              WHEN attr_value = '10' THEN '一线装维'
+              WHEN attr_value = '20' THEN '装维班长'
+              WHEN attr_value = '50' THEN '装维经营承包'
+              WHEN attr_value = '30' THEN '客调'
+              WHEN attr_value = '40' THEN '代理商装维'
+              WHEN attr_value = '60' THEN '客户工程师'
+              WHEN attr_value = '70' THEN '客户经理'
+              WHEN attr_value = '80' THEN '其他人员'
+              WHEN attr_value = '200' THEN '装维门店'
+              WHEN attr_value = '72' THEN '智家工程师-家庭DICT'
+              WHEN attr_value = '73' THEN '智家工程师-校园'
+              ELSE ''
+          END AS attrValue,
+          SUM(IFNULL(yd, 0)) AS ydTotal,
+          SUM(IFNULL(kd, 0)) AS zdkdTotal,
+          SUM(IFNULL(wifi_fw, 0)) AS qwWiFiServerTotal,
+          SUM(IFNULL(wifi_zd, 0)) AS qwWiFiTerminalTotal,
+          SUM(IFNULL(itv, 0)) AS tygqTotal,
+          SUM(IFNULL(tysl, 0)) AS tykjTotal,
+          SUM(IFNULL(qwzn, 0)) AS znjjTotal,
+          SUM(IFNULL(qwzn_fttr, 0)) AS znjjFTTRTotal,
+          SUM(IFNULL(CAST(fttr_yf AS DECIMAL), 0)) AS fttrYfTotal,
+          SUM(IFNULL(CAST(fttrb AS DECIMAL), 0)) AS fttrbTotal,
+          SUM(IFNULL(CAST(sqznzw AS DECIMAL), 0)) AS sqznzwTotal,
+          SUM(IFNULL(CAST(rhzk151 AS DECIMAL), 0)) AS rhzk151Total,
+          SUM(IFNULL(CAST(tyzp AS DECIMAL), 0)) AS tyzpTotal
+   FROM
+     (SELECT kd,
+             yd,
+             itv,
+             wifi_fw,
+             wifi_zd,
+             qwzn_fttr,
+             qwzn,
+             tysl,
+             fttr_yf,
+             sqznzw,
+             fttrb,
+             rhzk151,
+             tyzp,
+             b.staff_num AS staff_num,
+             b.attr_value AS attr_value,
+             b.staff_name AS staff_name,
+             b.area_no AS areaNO,
+             b.city_no AS cityNo,
+             b.zw_type AS zwType,
+             b.responsible_area AS responsibleArea,
+             b.to_sys_date AS toSysDate
+      FROM
+        (SELECT staff_id,
+                month_id,
+                attr_value_sx AS attr_value,
+                staff_num,
+                staff_name,
+                area_no,
+                city_no,
+                zw_type,
+                responsible_area,
+                to_sys_date
+         FROM dim_staff_zw10_zw zw
+         LEFT JOIN emp_employee_ext_month emp ON zw.emp_id = emp.emp_id
+         AND emp.month = zw.month_id
+         AND ext1 = 1
+         AND is_confirm = 1
+         WHERE month_id = '202607'
+           AND zw.is_off = '1') b
+      LEFT JOIN dwv_d_smr_user_list_result_merge a ON a.dvlp_staff_id = b.staff_id
+      AND (new_date >= '2026-07-01')
+      AND (new_date <= '2026-07-06')
+      WHERE b.month_id = '202607') t1
+   GROUP BY areaNO,
+            cityNo,
+            staff_num) t3
+LEFT JOIN
+  (SELECT staff_num,
+          IFNULL(SUM(fz_point), 0) AS fzPoint,
+          IFNULL(SUM(yy_point), 0) AS yyPoint,
+          SUM(IFNULL(fz_point, 0) + IFNULL(yy_point, 0)) AS sumPoint
+   FROM dwv_d_hrt_zw_point_zw_merge
+   WHERE attr_value IS NOT NULL
+     AND acct_day >=  '20260701' and acct_day <=  '20260706'
+   GROUP BY staff_num) t2 ON t3.staffId = t2.staff_num
