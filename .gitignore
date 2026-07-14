@@ -1,0 +1,12 @@
+.env
+.env.*
+.bi_credentials
+.runtime/
+.secrets/
+*.local.json
+push_config.local.json
+__pycache__/
+*.pyc
+output/.chrome-report-profile/
+temp/output/*.log
+temp/output/*.tmp

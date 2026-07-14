@@ -1,0 +1,42 @@
+{
+  "description": "FieldServiceAgent BI 下载配置，仅保留装维随销发展日清单相关数据集",
+  "priority_note": "本项目只使用 config 模式下载装维随销发展日清单，不维护其他 BI 指标配置",
+  "configs": {
+    "field-service-agent-official-staff": {
+      "type": "query",
+      "path": "省公司数据集/大数据和AI运营中心/WXY/美好家/正式人员装维日清单",
+      "qry_type": "sql",
+      "file_type": "xlsx",
+      "params": {},
+      "output_template": "装维随销发展日清单_正式人员_{acct_day}_{month_id}_{timestamp}.xlsx",
+      "description": "装维随销发展日清单（正式人员）"
+    },
+    "field-service-agent-intern-staff": {
+      "type": "query",
+      "path": "省公司数据集/大数据和AI运营中心/WXY/美好家/实习人员装维日清单",
+      "qry_type": "sql",
+      "file_type": "xlsx",
+      "params": {},
+      "output_template": "装维随销发展日清单_实习人员_{acct_day}_{month_id}_{timestamp}.xlsx",
+      "description": "装维随销发展日清单（实习人员）"
+    },
+    "field-service-agent-area-summary": {
+      "type": "query",
+      "path": "省公司数据集/大数据和AI运营中心/WXY/美好家/各地市装维月累计",
+      "qry_type": "sql",
+      "file_type": "xlsx",
+      "params": {},
+      "output_template": "装维月累计_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx",
+      "description": "装维月累计（地市汇总）"
+    },
+    "field-service-agent-city-summary": {
+      "type": "query",
+      "path": "省公司数据集/大数据和AI运营中心/WXY/美好家/各区县装维日清单",
+      "qry_type": "sql",
+      "file_type": "xlsx",
+      "params": {},
+      "output_template": "装维日清单_区县汇总_{acct_day}_{month_id}_{timestamp}.xlsx",
+      "description": "装维日清单（区县汇总）"
+    }
+  }
+}
