@@ -70,6 +70,7 @@ if [ ! -x "$UV" ]; then UV="$(command -v uv)"; fi
 - 缺字段时直接报告缺少字段和实际字段；如果只读取到“全省”而没有各地市明细，直接报告地市维度缺失。
 - 用户说“地市随销统计”“各地市随销统计”“各地市日清单”“各地市随销月清单”或“各地市随销月累计清单”且没有“报表/大屏/生成/制作/出一份/导出/页面/推送/发送/发到群/企微”时，直接下载或复用 `field-service-agent-area-summary`，在聊天框展示结果，不生成报表，不推送。
 - 用户说“各地市随销月累计报表”“各地市随销月清单报表”“各地市随销月累计大屏”，或同时包含“月累计/月清单”和“报表/大屏/生成/制作/出一份/导出/页面”时，下载或复用 `field-service-agent-area-summary`，然后使用 `scripts/generate_area_html_report.py --report-kind monthly` 生成本地 HTML 大屏，不推送。
+- 用户明确说要“结合个人和地市月累计”“个人+地市”“正式人员+地市”做“大屏/可视化/柱状图/酷炫报表”时，使用 `scripts/generate_monthly_bigscreen_report.py`，读取地市月累计和正式人员月累计两个 Excel，生成联动式 HTML 大屏；如果缺少正式人员月累计 Excel，直接说明缺少文件，不伪造 BI 路径。
 - 用户说“截止到YYYY年M月D日...”时，将该日期解析为 `acct_day=YYYYMMDD`，`month_id=YYYYMM`；例如“截止到2026年7月14日各地市随销月累计报表”使用 `acct_day=20260714,month_id=202607`。
 - 用户说“生成地市随销统计报表”但没有推送词时，使用 `scripts/generate_and_push_area_report.py` 生成本地 HTML、PNG，不推送企业微信；HTML 上方必须先展示所有业务量宽表，下方再放 `151装维量`、`FTTR-H/B装维量`、`人均价值积分` 三项 TOP 5 和 LAST 5 柱状图。
 - 用户明确说“推送”“发送”“发到群”或“企微”时，使用 `scripts/generate_and_push_area_report.py --send` 生成 HTML、PNG，并调用 `push-sender` 通过企业微信内部网关推送图片；推送图片同样保持“上方宽表、下方三项柱状图”的版式。
@@ -101,6 +102,15 @@ export PYTHONIOENCODING=utf-8
 UV="${HOME}/.local/bin/uv"
 if [ ! -x "$UV" ]; then UV="$(command -v uv)"; fi
 "$UV" run --with openpyxl python .opencode/skills/area-metrics/scripts/generate_area_html_report.py --area-dir ./temp/data/area --report-kind monthly
+```
+
+结合各地市月累计和正式人员月累计生成联动大屏，不推送：
+
+```bash
+export PYTHONIOENCODING=utf-8
+UV="${HOME}/.local/bin/uv"
+if [ ! -x "$UV" ]; then UV="$(command -v uv)"; fi
+"$UV" run --with openpyxl python .opencode/skills/area-metrics/scripts/generate_monthly_bigscreen_report.py --city-file ./temp/data/各地市装维月累计.xlsx --staff-file ./temp/data/正式人员装维月累计.xlsx --acct-day "${acctDay}"
 ```
 
 生成 HTML 和 PNG，不推送：
