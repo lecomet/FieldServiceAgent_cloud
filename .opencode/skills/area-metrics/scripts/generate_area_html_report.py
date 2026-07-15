@@ -45,7 +45,7 @@ SINGLE_COLUMNS = [
     "人均FTTR-H/B",
 ]
 MONTHLY_HIDDEN_SINGLE_COLUMNS = {"总人数含班长", "总人数不含班长"}
-WIDE_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分"}
+WIDE_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分", "人均价值积分", "人均评价积分"}
 MONTHLY_INTEGER_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分"}
 HIGHLIGHT_COUNT = 3
 FOCUS_LIMIT = 5
@@ -507,7 +507,7 @@ def column_width(col: dict) -> int:
     if key == "编码":
         return 58
     if key in WIDE_SINGLE_COLUMNS:
-        return 112
+        return 104
     if key.startswith("FTTR-H/B-"):
         return 82
     if "占比" in key:
