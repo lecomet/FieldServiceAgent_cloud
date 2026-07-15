@@ -69,7 +69,7 @@ if [ ! -x "$UV" ]; then UV="$(command -v uv)"; fi
 - 下载文件必须是标准 `.xlsx`，第 1 行必须是字段名；读取时只清理字段名前后空白、换行和制表符，不维护字段映射。
 - 缺字段时直接报告缺少字段和实际字段；如果只读取到“全省”而没有各地市明细，直接报告地市维度缺失。
 - 用户说“地市随销统计”“各地市随销统计”“各地市日清单”“各地市随销月清单”或“各地市随销月累计清单”且没有“报表/大屏/生成/制作/出一份/导出/页面/推送/发送/发到群/企微”时，直接下载或复用 `field-service-agent-area-summary`，在聊天框展示结果，不生成报表，不推送。
-- 用户说“各地市随销月累计报表”“各地市随销月清单报表”“各地市随销月累计大屏”，或同时包含“月累计/月清单”和“报表/大屏/生成/制作/出一份/导出/页面”时，下载或复用 `field-service-agent-area-summary`，然后使用 `scripts/generate_area_html_report.py --report-kind monthly` 生成本地 HTML 大屏，不推送。
+- 用户说“各地市随销月累计报表”“各地市随销月清单报表”，或同时包含“月累计/月清单”和“报表/生成/制作/出一份/导出/页面”时，下载或复用 `field-service-agent-area-summary` 到 `temp/data/area/`，默认文件名类似 `装维月累计_地市汇总_20260714_202607_20260715144516.xlsx`，然后使用 `scripts/generate_area_html_report.py --report-kind monthly` 生成本地 HTML 报表，不推送。
 - 用户明确说要“结合个人和地市月累计”“个人+地市”“正式人员+地市”做“大屏/可视化/柱状图/酷炫报表”时，使用 `scripts/generate_monthly_bigscreen_report.py`，读取地市月累计和正式人员月累计两个 Excel，生成联动式 HTML 大屏；如果缺少正式人员月累计 Excel，直接说明缺少文件，不伪造 BI 路径。
 - 用户说“截止到YYYY年M月D日...”时，将该日期解析为 `acct_day=YYYYMMDD`，`month_id=YYYYMM`；例如“截止到2026年7月14日各地市随销月累计报表”使用 `acct_day=20260714,month_id=202607`。
 - 用户说“生成地市随销统计报表”但没有推送词时，使用 `scripts/generate_and_push_area_report.py` 生成本地 HTML、PNG，不推送企业微信；HTML 上方必须先展示所有业务量宽表，下方再放 `151装维量`、`FTTR-H/B装维量`、`人均价值积分` 三项 TOP 5 和 LAST 5 柱状图。
@@ -95,7 +95,7 @@ monthId="${acctDay:0:6}"
 
 ## 报表生成和推送示例
 
-生成各地市随销月累计 HTML 大屏，不推送：
+生成各地市随销月累计 HTML 报表，不推送：
 
 ```bash
 export PYTHONIOENCODING=utf-8

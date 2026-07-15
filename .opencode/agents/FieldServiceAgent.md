@@ -11,7 +11,7 @@ description: |
   区县汇总：一行一个区县，字段与地市汇总一致。
   地市日通报：基于各区县装维日清单筛选某地市所有区县，生成 HTML，不推送。
   地市随销统计报表：将各地市装维月累计生成 HTML/PNG，并按明确触发词推送到企业微信。
-  各地市随销月累计报表：将各地市装维月累计生成 HTML 大屏；各地市随销月清单默认只查询回复。
+  各地市随销月累计报表：将各地市装维月累计生成与地市随销日清单一致版式的 HTML 报表；各地市随销月清单默认只查询回复。
   月累计联动大屏：结合各地市装维月累计和正式人员装维月累计，生成地市排名、效率排名和个人贡献榜。
 
 mode: all
@@ -79,7 +79,7 @@ permission:
 | 姓名、工号、个人情况、人员明细、个人发展量/积分 | `stuff-metrics` | 一行一个人 | `temp/data/official/`, `temp/data/intern/` |
 | 明确包含推送/发送/发到群/企微 + 各地市/地市/全省 + 随销/日清单/报表/统计 | `area-metrics` | 生成 HTML/PNG，并通过企业微信机器人 Webhook 推送图片 | `temp/data/area/`, `output/` |
 | 生成地市随销统计报表（不含推送词） | `area-metrics` | 生成本地 HTML/PNG，不推送 | `temp/data/area/`, `output/` |
-| 月累计/月清单 + 报表/大屏/生成/制作/出一份/导出/页面 | `area-metrics` | 生成各地市随销月累计 HTML 大屏，不推送 | `temp/data/area/`, `output/` |
+| 月累计/月清单 + 报表/生成/制作/出一份/导出/页面 | `area-metrics` | 生成各地市随销月累计 HTML 报表，不推送 | `temp/data/area/`, `output/` |
 | 个人+地市月累计 + 大屏/可视化/柱状图/酷炫报表 | `area-metrics` | 结合正式人员月累计和地市月累计生成联动 HTML 大屏 | `temp/data/`, `output/` |
 | 各地市随销月清单、各地市随销月累计清单（无报表/大屏/生成词） | `area-metrics` | 只查询各地市装维月累计并在聊天框回复 | `temp/data/area/` |
 | 某地市 + 日通报/地市日通报/装维日通报 | `city-metrics` | 基于各区县装维日清单筛选该地市所有区县，生成 HTML，不推送 | `temp/data/city/`, `output/` |
@@ -103,7 +103,7 @@ permission:
 4. 用户问“某地市 + 日通报/地市日通报/装维日通报”时，调度 `city-metrics` 下载 `field-service-agent-city-summary`，再用 `generate_city_daily_html_report.py --city <地市>` 生成 HTML；不推送。
 5. 用户问“生成地市随销统计报表”但没有推送词时，调度 `area-metrics` 生成本地 HTML/PNG，不发送企业微信。
 6. 用户问“结合个人和地市月累计/个人+地市/正式人员+地市”并要求“大屏/可视化/柱状图/酷炫报表”时，调度 `area-metrics` 使用 `generate_monthly_bigscreen_report.py` 生成联动 HTML 大屏；如果缺少正式人员月累计文件，说明缺少文件，不伪造 BI 路径。
-7. 用户问“各地市随销月累计报表/各地市随销月清单报表/各地市随销月累计大屏”，或同时包含“月累计/月清单”和“报表/大屏/生成/制作/出一份/导出/页面”时，调度 `area-metrics` 生成各地市随销月累计 HTML 大屏，不发送企业微信。
+7. 用户问“各地市随销月累计报表/各地市随销月清单报表”，或同时包含“月累计/月清单”和“报表/生成/制作/出一份/导出/页面”时，调度 `area-metrics` 生成各地市随销月累计 HTML 报表，不发送企业微信；月累计文件默认位于 `temp/data/area/装维月累计_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx`。
 8. 用户问“地市随销统计/各地市随销统计/全省地市随销统计/各地市日清单/各地市随销月清单/各地市随销月累计清单”且没有推送词和报表生成词时，调度 `area-metrics`，下载或复用 `field-service-agent-area-summary`，在聊天框展示结果；“各地市随销月清单”默认只查询，不生成报表。
 9. 用户问“区县随销统计/各区县随销统计/某地市区县随销统计”时，调度 `city-metrics`，直接下载并读取 `field-service-agent-city-summary`。
 10. 用户问“全省/山东省装维随销发展日清单”时，调度 `area-metrics`，返回山东省所有地市。
@@ -194,7 +194,7 @@ acct_day=YYYYMMDD
   |     +-- 推送/发送 + 各地市/地市/全省 + 随销/日清单/报表/统计 -> area-metrics 生成图片并调用企业微信机器人 Webhook
   |     +-- 生成地市随销统计报表 -> area-metrics 生成本地 HTML/PNG，不推送
   |     +-- 个人+地市月累计 + 大屏/可视化/柱状图 -> area-metrics 生成联动 HTML 大屏
-  |     +-- 月累计/月清单 + 报表/大屏/生成/制作 -> area-metrics 生成各地市随销月累计 HTML 大屏
+  |     +-- 月累计/月清单 + 报表/生成/制作 -> area-metrics 生成各地市随销月累计 HTML 报表
   |     +-- 某地市 + 日通报/地市日通报/装维日通报 -> city-metrics 生成 HTML
   |     +-- 全省/山东省 + 装维随销发展日清单 -> area-metrics
   |     +-- 地市随销统计/各地市随销统计/各地市随销月清单 -> area-metrics
@@ -249,7 +249,7 @@ acct_day=YYYYMMDD
 | `给我张三和李四的装维随销发展日清单` | `stuff-metrics` | 取指定人员 |
 | `地市随销统计` | `area-metrics` | 直接下载各地市装维月累计 |
 | `各地市随销月清单` | `area-metrics` | 默认只查询各地市装维月累计，在聊天框回复，不生成报表 |
-| `截止到2026年7月14日各地市随销月累计报表` | `area-metrics` | 使用 acct_day=20260714、month_id=202607，生成各地市随销月累计 HTML 大屏 |
+| `截止到2026年7月14日各地市随销月累计报表` | `area-metrics` | 使用 acct_day=20260714、month_id=202607，生成各地市随销月累计 HTML 报表 |
 | `结合个人和地市月累计做一个酷炫的大屏` | `area-metrics` | 读取地市月累计和正式人员月累计，生成联动 HTML 大屏 |
 | `给我各地市20270706的随销日清单` | `area-metrics` | 聊天框展示各地市日清单，不生成图片，不推送 |
 | `给我推送各地市20270706的随销日清单` | `area-metrics` | 生成 HTML/PNG 图片并通过企业微信机器人 Webhook 发送到企业微信 |

@@ -33,12 +33,15 @@ GROUPS = [
     ("天翼智屏", ["全渠道(量)", "装维(量)", "装维占比"]),
 ]
 SINGLE_COLUMNS = [
+    "加载积分",
     "发展积分",
     "运营积分",
     "价值积分",
+    "评价积分",
     "总人数含班长",
     "总人数不含班长",
     "人均价值积分",
+    "人均评价积分",
     "人均FTTR-H/B",
 ]
 HIGHLIGHT_COUNT = 3
@@ -69,10 +72,12 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-def latest_xlsx(directory: Path) -> Path | None:
+def latest_xlsx(directory: Path, patterns: list[str] | None = None) -> Path | None:
+    patterns = patterns or ["*.xlsx"]
     files = [
         path
-        for path in directory.glob("*.xlsx")
+        for pattern in patterns
+        for path in directory.glob(pattern)
         if path.is_file() and not path.name.startswith("~$")
     ]
     if not files:
@@ -540,6 +545,12 @@ def report_config(report_kind: str) -> dict:
     return REPORT_KINDS.get(report_kind, REPORT_KINDS["standard"])
 
 
+def default_input_patterns(report_kind: str) -> list[str]:
+    if report_kind == "monthly":
+        return ["装维月累计_地市汇总_*.xlsx", "*各地市装维月累计*.xlsx"]
+    return ["装维日清单_地市汇总_*.xlsx", "*.xlsx"]
+
+
 def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], singles: list[dict], report_kind: str = "standard") -> str:
     acct_day, month_id = parse_dates(source)
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -942,7 +953,7 @@ def main() -> None:
         if not source.is_absolute():
             source = root / source
     else:
-        source = latest_xlsx(root / args.area_dir)
+        source = latest_xlsx(root / args.area_dir, default_input_patterns(args.report_kind))
         if not source:
             raise SystemExit(f"未找到地市汇总 Excel: {root / args.area_dir}")
 
