@@ -590,6 +590,7 @@ def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], sin
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     title_date = format_day(acct_day) if acct_day else "最新"
     config = report_config(report_kind)
+    page_width = 2600 if report_kind == "monthly" else 1840
     headers = ["地市"]
     for col in grouped_columns:
         if "children" in col:
@@ -615,7 +616,7 @@ def render_html(source: Path, rows: list[dict], grouped_columns: list[dict], sin
       font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
     }}
     .page {{
-      width: 1840px;
+      width: {page_width}px;
       margin: 0 auto;
       padding: 30px 34px 34px;
       background: #f7f9fc;
