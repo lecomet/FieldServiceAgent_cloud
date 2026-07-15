@@ -44,6 +44,8 @@ SINGLE_COLUMNS = [
     "人均评价积分",
     "人均FTTR-H/B",
 ]
+MONTHLY_HIDDEN_SINGLE_COLUMNS = {"总人数含班长", "总人数不含班长"}
+WIDE_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分"}
 HIGHLIGHT_COUNT = 3
 FOCUS_LIMIT = 5
 FOCUS_METRICS = [
@@ -195,7 +197,7 @@ def ensure_area_detail(path: Path, rows: list[dict]) -> None:
         raise ValueError(f"{path} 只读取到全省汇总，没有各地市明细。请检查 BI 下载是否保留地市维度。实际地市值: {actual}")
 
 
-def build_columns(headers: list[str]) -> tuple[list[dict], list[dict]]:
+def build_columns(headers: list[str], report_kind: str = "standard") -> tuple[list[dict], list[dict]]:
     fixed = [
         {"key": "地市", "label": "地市", "rowspan": 2, "kind": "text"},
         {"key": "编码", "label": "编码", "rowspan": 2, "kind": "text"},
@@ -213,6 +215,8 @@ def build_columns(headers: list[str]) -> tuple[list[dict], list[dict]]:
 
     singles = []
     for key in SINGLE_COLUMNS:
+        if report_kind == "monthly" and key in MONTHLY_HIDDEN_SINGLE_COLUMNS:
+            continue
         if key in headers:
             singles.append({"key": key, "label": key, "rowspan": 2, "kind": "number"})
     return fixed + grouped, singles
@@ -484,6 +488,35 @@ def render_focus_charts(rows: list[dict], headers: list[str]) -> str:
     """
 
 
+def column_width(col: dict) -> int:
+    key = col.get("key", "")
+    if key == "地市":
+        return 64
+    if key == "编码":
+        return 58
+    if key in WIDE_SINGLE_COLUMNS:
+        return 112
+    if key.startswith("FTTR-H/B-"):
+        return 82
+    if "占比" in key:
+        return 70
+    if col.get("rowspan") == 2:
+        return 86
+    return 76
+
+
+def render_colgroup(grouped_columns: list[dict], singles: list[dict]) -> str:
+    widths = []
+    for col in grouped_columns:
+        if "children" in col:
+            widths.extend(column_width(child) for child in col["children"])
+        else:
+            widths.append(column_width(col))
+    widths.extend(column_width(col) for col in singles)
+    cols = "".join(f'<col style="width:{width}px">' for width in widths)
+    return f"<colgroup>{cols}</colgroup>"
+
+
 def render_table(rows: list[dict], grouped_columns: list[dict], singles: list[dict]) -> str:
     metric_columns = flat_metric_columns(grouped_columns, singles)
     classes = rank_classes(rows, metric_columns)
@@ -530,6 +563,7 @@ def render_table(rows: list[dict], grouped_columns: list[dict], singles: list[di
 
     return f"""
       <table class="report-table">
+        {render_colgroup(grouped_columns, singles)}
         <thead>
           <tr>{''.join(top_cells)}</tr>
           <tr>{''.join(second_cells)}</tr>
@@ -960,7 +994,7 @@ def main() -> None:
     headers, rows = load_rows(source)
     ensure_area_detail(source, rows)
     rows = sort_rows(rows)
-    grouped_columns, singles = build_columns(headers)
+    grouped_columns, singles = build_columns(headers, args.report_kind)
     if not grouped_columns:
         raise SystemExit("未找到可用于生成报表的指标列。")
 
