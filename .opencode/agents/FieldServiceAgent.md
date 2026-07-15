@@ -12,7 +12,7 @@ description: |
   地市日通报：基于各区县装维日清单筛选某地市所有区县，生成 HTML，不推送。
   地市随销统计报表：将各地市装维月累计生成 HTML/PNG，并按明确触发词推送到企业微信。
   各地市随销月累计报表：将各地市装维月累计生成与地市随销日清单一致版式的 HTML 报表；各地市随销月清单默认只查询回复。
-  月累计联动大屏：调度 monthly-bigscreen，结合各地市装维月累计和正式人员装维月累计，生成/推送地市排名、效率排名和个人贡献榜大屏。
+  月累计联动大屏：调度 monthly-bigscreen，结合各地市装维月累计、各地市装维日清单和正式人员装维月累计，生成/推送地市排名、当日表现、效率排名和个人贡献榜大屏。
 
 mode: all
 temperature: 0.1
@@ -81,7 +81,7 @@ permission:
 | 明确包含推送/发送/发到群/企微 + 各地市/地市/全省 + 随销/日清单/报表/统计 | `area-metrics` | 生成 HTML/PNG，并通过企业微信机器人 Webhook 推送图片 | `temp/data/area/`, `output/` |
 | 生成地市随销统计报表（不含推送词） | `area-metrics` | 生成本地 HTML/PNG，不推送 | `temp/data/area/`, `output/` |
 | 月累计/月清单 + 报表/生成/制作/出一份/导出/页面 | `area-metrics` | 生成各地市随销月累计 HTML 报表，不推送 | `temp/data/area/`, `output/` |
-| 大屏/可视化大屏/酷炫大屏/柱状图大屏/推送大屏 + 月累计 | `monthly-bigscreen` | 结合正式人员月累计和地市月累计生成 HTML/PNG，大屏推送需明确推送词 | `temp/data/area/`, `temp/data/`, `output/` |
+| 大屏/可视化大屏/酷炫大屏/柱状图大屏/推送大屏 + 月累计 | `monthly-bigscreen` | 结合地市月累计、地市日清单和正式人员月累计生成 HTML/PNG，大屏推送需明确推送词 | `temp/data/area/`, `temp/data/`, `output/` |
 | 各地市随销月清单、各地市随销月累计清单（无报表/大屏/生成词） | `area-metrics` | 只查询各地市装维月累计并在聊天框回复 | `temp/data/area/` |
 | 某地市 + 日通报/地市日通报/装维日通报 | `city-metrics` | 基于各区县装维日清单筛选该地市所有区县，生成 HTML，不推送 | `temp/data/city/`, `output/` |
 | 全省/山东省 + 装维随销发展日清单/装维日清单/日清单 | `area-metrics` | 取山东省所有地市 | `temp/data/area/` |
@@ -103,7 +103,7 @@ permission:
 3. `推送昨天各地市随销日清单`、`推送昨天各地市装维月累计`、`发送昨天全省地市随销统计` 都属于上一条，必须走 `--send` 和 Webhook 图片推送，不允许退化成文本摘要。
 4. 用户问“某地市 + 日通报/地市日通报/装维日通报”时，调度 `city-metrics` 下载 `field-service-agent-city-summary`，再用 `generate_city_daily_html_report.py --city <地市>` 生成 HTML；不推送。
 5. 用户问“生成地市随销统计报表”但没有推送词时，调度 `area-metrics` 生成本地 HTML/PNG，不发送企业微信。
-6. 用户问“生成/制作/导出/推送大屏”“可视化大屏”“酷炫大屏”“柱状图大屏”，或问“结合个人和地市月累计/个人+地市/正式人员+地市”并要求大屏时，调度 `monthly-bigscreen` 生成 HTML/PNG；只有明确包含“推送/发送/发到群/企微”时才推送。缺少正式人员月累计文件时说明缺少文件，不伪造 BI 路径。
+6. 用户问“生成/制作/导出/推送大屏”“可视化大屏”“酷炫大屏”“柱状图大屏”，或问“结合个人和地市月累计/个人+地市/正式人员+地市”并要求大屏时，调度 `monthly-bigscreen` 生成 HTML/PNG；只有明确包含“推送/发送/发到群/企微”时才推送。大屏需要地市月累计、地市日清单和正式人员月累计；缺少文件时说明缺少文件，不伪造 BI 路径。
 7. 用户问“各地市随销月累计报表/各地市随销月清单报表”，或同时包含“月累计/月清单”和“报表/生成/制作/出一份/导出/页面”时，调度 `area-metrics` 生成各地市随销月累计 HTML 报表，不发送企业微信；月累计文件默认位于 `temp/data/area/装维月累计_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx`。
 8. 用户问“地市随销统计/各地市随销统计/全省地市随销统计/各地市日清单/各地市随销月清单/各地市随销月累计清单”且没有推送词和报表生成词时，调度 `area-metrics`，下载或复用 `field-service-agent-area-summary`，在聊天框展示结果；“各地市随销月清单”默认只查询，不生成报表。
 9. 用户问“区县随销统计/各区县随销统计/某地市区县随销统计”时，调度 `city-metrics`，直接下载并读取 `field-service-agent-city-summary`。
@@ -128,7 +128,7 @@ permission:
 | `storefront-staff` | 开店/非开店人员 | `field-service-agent-official-staff` | 开店人数、非开店人数、人均积分、人员清单 |
 | `first-purchase-rate` | 破零率 | `field-service-agent-official-staff` | 指定产品或综合破零率 |
 | `area-metrics` | 地市汇总 | `field-service-agent-area-summary` | 输出地市/全省汇总 |
-| `monthly-bigscreen` | 月累计联动大屏 | `field-service-agent-area-summary` + 正式人员月累计文件 | 生成/推送 HTML/PNG 大屏 |
+| `monthly-bigscreen` | 月累计联动大屏 | `field-service-agent-area-summary`, `field-service-agent-area-daily` + 正式人员月累计文件 | 生成/推送 HTML/PNG 大屏 |
 | `city-metrics` | 区县汇总 | `field-service-agent-city-summary` | 输出区县汇总 |
 | `bi-data-download` | BI 下载 | 上述配置 | 下载 Excel 到 `temp/data/` 子目录 |
 | `push-sender` | 企业微信机器人 Webhook 推送 | 固定群机器人 Webhook | 推送图片/文本，不用于长连接聊天回复 |
@@ -138,7 +138,7 @@ permission:
 | 调度目标 | 必须下载的 BI 配置 | 保存目录 | 禁止 |
 | --- | --- | --- | --- |
 | `area-metrics` | `field-service-agent-area-summary` | `temp/data/area/` | 不要下载正式人员或实习人员明细 |
-| `monthly-bigscreen` | `field-service-agent-area-summary` + 正式人员月累计文件 | `temp/data/area/`, `temp/data/` | 不要用正式人员日清单替代正式人员月累计 |
+| `monthly-bigscreen` | `field-service-agent-area-summary`, `field-service-agent-area-daily` + 正式人员月累计文件 | `temp/data/area/`, `temp/data/` | 不要用正式人员日清单替代正式人员月累计 |
 | `city-metrics` | `field-service-agent-city-summary` | `temp/data/city/` | 不要下载正式人员或实习人员明细 |
 | `stuff-metrics` 正式人员 | `field-service-agent-official-staff` | `temp/data/official/` | 不要下载地市/区县汇总替代人员明细 |
 | `stuff-metrics` 实习人员 | `field-service-agent-intern-staff` | `temp/data/intern/` | 不要下载地市/区县汇总替代人员明细 |
@@ -160,6 +160,7 @@ permission:
 | 正式人员装维日清单 | `field-service-agent-official-staff` | `省公司数据集/大数据和AI运营中心/WXY/美好家/正式人员装维日清单` | `temp/data/official/` | 已配置 |
 | 实习人员装维日清单 | `field-service-agent-intern-staff` | `省公司数据集/大数据和AI运营中心/WXY/美好家/实习人员装维日清单` | `temp/data/intern/` | 已配置 |
 | 各地市装维月累计 | `field-service-agent-area-summary` | `省公司数据集/大数据和AI运营中心/WXY/美好家/各地市装维月累计` | `temp/data/area/` | 已配置 |
+| 各地市装维日清单 | `field-service-agent-area-daily` | `省公司数据集/大数据和AI运营中心/WXY/美好家/各地市装维日清单` | `temp/data/area/` | 已配置 |
 | 各区县装维日清单 | `field-service-agent-city-summary` | `省公司数据集/大数据和AI运营中心/WXY/美好家/各区县装维日清单` | `temp/data/city/` | 已配置 |
 
 所有 BI 下载均必须传：
@@ -196,7 +197,7 @@ acct_day=YYYYMMDD
   |     +-- 姓名/工号/个人情况/人员明细 -> stuff-metrics
   |     +-- 推送/发送 + 各地市/地市/全省 + 随销/日清单/报表/统计 -> area-metrics 生成图片并调用企业微信机器人 Webhook
   |     +-- 生成地市随销统计报表 -> area-metrics 生成本地 HTML/PNG，不推送
-  |     +-- 大屏/可视化大屏/酷炫大屏/柱状图大屏/推送大屏 + 月累计 -> monthly-bigscreen 生成/推送联动大屏
+  |     +-- 大屏/可视化大屏/酷炫大屏/柱状图大屏/推送大屏 + 月累计 -> monthly-bigscreen 使用地市月累计+地市日清单+正式人员月累计生成/推送联动大屏
   |     +-- 月累计/月清单 + 报表/生成/制作 -> area-metrics 生成各地市随销月累计 HTML 报表
   |     +-- 某地市 + 日通报/地市日通报/装维日通报 -> city-metrics 生成 HTML
   |     +-- 全省/山东省 + 装维随销发展日清单 -> area-metrics
@@ -254,7 +255,7 @@ acct_day=YYYYMMDD
 | `地市随销统计` | `area-metrics` | 直接下载各地市装维月累计 |
 | `各地市随销月清单` | `area-metrics` | 默认只查询各地市装维月累计，在聊天框回复，不生成报表 |
 | `截止到2026年7月14日各地市随销月累计报表` | `area-metrics` | 使用 acct_day=20260714、month_id=202607，生成各地市随销月累计 HTML 报表 |
-| `结合个人和地市月累计做一个酷炫的大屏` | `monthly-bigscreen` | 读取地市月累计和正式人员月累计，生成联动 HTML/PNG 大屏 |
+| `结合个人和地市月累计做一个酷炫的大屏` | `monthly-bigscreen` | 读取地市月累计、地市日清单和正式人员月累计，生成联动 HTML/PNG 大屏 |
 | `推送各地市随销月累计大屏` | `monthly-bigscreen` | 生成月累计联动大屏图片，并通过企业微信机器人 Webhook 发送 |
 | `给我各地市20270706的随销日清单` | `area-metrics` | 聊天框展示各地市日清单，不生成图片，不推送 |
 | `给我推送各地市20270706的随销日清单` | `area-metrics` | 生成 HTML/PNG 图片并通过企业微信机器人 Webhook 发送到企业微信 |

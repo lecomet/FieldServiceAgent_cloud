@@ -149,6 +149,7 @@ def build_generate_argv(args: argparse.Namespace) -> list[str]:
     argv = ["generate_monthly_bigscreen_report.py"]
     for flag, value in [
         ("--city-file", args.city_file),
+        ("--daily-city-file", args.daily_city_file),
         ("--staff-file", args.staff_file),
         ("--acct-day", args.acct_day),
         ("--month-id", args.month_id),
@@ -180,13 +181,14 @@ def resolve_html_path(root: Path, args: argparse.Namespace) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成月累计联动大屏 HTML/PNG，并可推送企业微信")
     parser.add_argument("--city-file", help="地市月累计 Excel；默认从 temp/data 自动查找")
+    parser.add_argument("--daily-city-file", help="各地市装维日清单 Excel；默认从 temp/data 自动查找")
     parser.add_argument("--staff-file", help="正式人员月累计 Excel；默认从 temp/data 自动查找")
     parser.add_argument("--acct-day", help="截至日期 YYYYMMDD")
     parser.add_argument("--month-id", help="账期 YYYYMM")
     parser.add_argument("--html-output", help="HTML 输出路径")
     parser.add_argument("--image-output", help="PNG 输出路径；默认与 HTML 同名")
     parser.add_argument("--width", type=int, default=1920, help="图片渲染宽度")
-    parser.add_argument("--height", type=int, default=1080, help="图片渲染高度")
+    parser.add_argument("--height", type=int, default=1400, help="图片渲染高度")
     parser.add_argument("--send", action="store_true", help="生成图片后推送企业微信")
     args = parser.parse_args()
 

@@ -15,6 +15,7 @@
 | `stuff-metrics` 正式人员 | `field-service-agent-official-staff` | `temp/data/official/` | `装维随销发展日清单_正式人员_{acct_day}_{month_id}_{timestamp}.xlsx` |
 | `stuff-metrics` 实习人员 | `field-service-agent-intern-staff` | `temp/data/intern/` | `装维随销发展日清单_实习人员_{acct_day}_{month_id}_{timestamp}.xlsx` |
 | `area-metrics` 地市汇总 | `field-service-agent-area-summary` | `temp/data/area/` | `装维月累计_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx` |
+| `area-metrics` 地市日清单 | `field-service-agent-area-daily` | `temp/data/area/` | `装维日清单_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx` |
 | `city-metrics` 区县汇总 | `field-service-agent-city-summary` | `temp/data/city/` | `装维日清单_区县汇总_{acct_day}_{month_id}_{timestamp}.xlsx` |
 
 人员聚合指标 `couple-score`、`storefront-staff`、`first-purchase-rate` 只需要正式人员明细，即 `field-service-agent-official-staff`。
@@ -47,13 +48,15 @@ monthId="${acctDay:0:6}"
 
 "$UV" run --with python-dateutil --with requests --with openpyxl python .opencode/skills/bi-data-download/scripts/download_bi_data.py -t config -n field-service-agent-area-summary --params "month_id=${monthId},acct_day=${acctDay}" -o ./temp/data/area
 
+"$UV" run --with python-dateutil --with requests --with openpyxl python .opencode/skills/bi-data-download/scripts/download_bi_data.py -t config -n field-service-agent-area-daily --params "month_id=${monthId},acct_day=${acctDay}" -o ./temp/data/area
+
 "$UV" run --with python-dateutil --with requests --with openpyxl python .opencode/skills/bi-data-download/scripts/download_bi_data.py -t config -n field-service-agent-city-summary --params "month_id=${monthId},acct_day=${acctDay}" -o ./temp/data/city
 ```
 
 ## 约束
 
 - 不检查本地是否已有文件；每次流程都直接下载。
-- `area-metrics` 只下载 `field-service-agent-area-summary` 到 `temp/data/area/`，不要下载正式人员明细。
+- `area-metrics` 按请求下载 `field-service-agent-area-summary` 或 `field-service-agent-area-daily` 到 `temp/data/area/`，不要下载正式人员明细。
 - `city-metrics` 只下载 `field-service-agent-city-summary` 到 `temp/data/city/`，不要下载正式人员明细。
 - `stuff-metrics` 查正式人员才下载 `field-service-agent-official-staff`，查实习人员才下载 `field-service-agent-intern-staff`。
 - BI 下载格式固定为 `.xlsx`，配置里的 `file_type` 必须是 `xlsx`，下载后必须校验响应内容是标准 `.xlsx`。

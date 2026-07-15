@@ -1365,7 +1365,7 @@ def validate_saved_download(config_name: str, output_file: str, file_type: str) 
     headers, rows = read_xlsx_shape_and_rows(output_file)
     indexes = {header: idx for idx, header in enumerate(headers) if header}
 
-    if config_name == "field-service-agent-area-summary":
+    if config_name in {"field-service-agent-area-summary", "field-service-agent-area-daily"}:
         if "地市" not in indexes:
             raise ValueError(f"地市汇总文件缺少字段: 地市；实际字段: {'、'.join(headers)}")
         city_idx = indexes["地市"]

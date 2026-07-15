@@ -26,6 +26,7 @@ Run commands from:
 | 装维随销发展日清单（正式人员） | `field-service-agent-official-staff` | `month_id=YYYYMM,acct_day=YYYYMMDD` | `temp/data/official/` |
 | 装维随销发展日清单（实习人员） | `field-service-agent-intern-staff` | `month_id=YYYYMM,acct_day=YYYYMMDD` | `temp/data/intern/` |
 | 各地市装维月累计 | `field-service-agent-area-summary` | `month_id=YYYYMM,acct_day=YYYYMMDD` | `temp/data/area/` |
+| 各地市装维日清单 | `field-service-agent-area-daily` | `month_id=YYYYMM,acct_day=YYYYMMDD` | `temp/data/area/` |
 | 各区县装维日清单 | `field-service-agent-city-summary` | `month_id=YYYYMM,acct_day=YYYYMMDD` | `temp/data/city/` |
 
 The config definitions are in `download_configs.json`.
@@ -82,6 +83,12 @@ Download area summary:
 "$UV" run --with python-dateutil --with requests --with openpyxl python .opencode/skills/bi-data-download/scripts/download_bi_data.py -t config -n field-service-agent-area-summary --params "month_id=${monthId},acct_day=${acctDay}" -o ./temp/data/area
 ```
 
+Download area daily summary:
+
+```bash
+"$UV" run --with python-dateutil --with requests --with openpyxl python .opencode/skills/bi-data-download/scripts/download_bi_data.py -t config -n field-service-agent-area-daily --params "month_id=${monthId},acct_day=${acctDay}" -o ./temp/data/area
+```
+
 Download city/county summary:
 
 ```bash
@@ -101,7 +108,7 @@ Download city/county summary:
 - Save intern staff files to `temp/data/intern/`.
 - Save area summary files to `temp/data/area/`.
 - Save city/county summary files to `temp/data/city/`.
-- When the target skill is `area-metrics`, download only `field-service-agent-area-summary` to `temp/data/area/`; do not download formal staff data.
+- When the target skill is `area-metrics`, download only the requested area file (`field-service-agent-area-summary` for month cumulative, `field-service-agent-area-daily` for city daily) to `temp/data/area/`; do not download formal staff data.
 - When the target skill is `city-metrics`, download only `field-service-agent-city-summary` to `temp/data/city/`; do not download formal staff data.
 - Do not delete downloaded `.xlsx` files that pass saved-file validation. Keep them under `temp/data/...` for same-day reuse.
 - Output filenames must use `{acct_day}_{month_id}_{timestamp}`.

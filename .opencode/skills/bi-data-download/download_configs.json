@@ -29,6 +29,15 @@
       "output_template": "装维月累计_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx",
       "description": "装维月累计（地市汇总）"
     },
+    "field-service-agent-area-daily": {
+      "type": "query",
+      "path": "省公司数据集/大数据和AI运营中心/WXY/美好家/各地市装维日清单",
+      "qry_type": "sql",
+      "file_type": "xlsx",
+      "params": {},
+      "output_template": "装维日清单_地市汇总_{acct_day}_{month_id}_{timestamp}.xlsx",
+      "description": "装维日清单（地市汇总）"
+    },
     "field-service-agent-city-summary": {
       "type": "query",
       "path": "省公司数据集/大数据和AI运营中心/WXY/美好家/各区县装维日清单",

@@ -33,6 +33,11 @@ CITY_METRICS = [
     ("人均评价积分", "avg_eval_score", "人均评价积分"),
     ("人均FTTR-H/B", "avg_fttr_hb", "人均FTTR-H/B"),
 ]
+DAILY_CITY_METRICS = [
+    ("价值积分", "value_score", "当日价值积分"),
+    ("151-装维(量)", "service_151", "当日151装维量"),
+    ("FTTR-H/B-装维(量)", "fttr_hb", "当日FTTR-H/B装维量"),
+]
 STAFF_METRICS = [
     ("评价积分", "eval_score", "评价积分"),
     ("原始积分", "raw_score", "原始积分"),
@@ -44,6 +49,7 @@ STAFF_METRICS = [
 ]
 PRIMARY_CITY_CHARTS = ["value_score", "eval_score", "service_151", "fttr_hb"]
 EFFICIENCY_CHARTS = ["avg_value_score", "avg_eval_score", "avg_fttr_hb"]
+DAILY_CITY_CHARTS = ["value_score", "service_151", "fttr_hb"]
 GLOBAL_STAFF_CHARTS = ["eval_score", "raw_score", "total_volume", "service_151", "fttr_hb"]
 TOP_LIMIT = 10
 
@@ -182,6 +188,27 @@ def build_city_data(headers: list[str], rows: list[dict]) -> tuple[list[dict], d
     return sorted(cities, key=lambda item: item["city"]), province
 
 
+def build_daily_city_data(headers: list[str], rows: list[dict]) -> tuple[list[dict], dict | None]:
+    require_columns(Path("地市日清单"), headers, ["地市"])
+    metric_sources = {source: (key, label) for source, key, label in DAILY_CITY_METRICS if source in headers}
+    cities = []
+    province = None
+    for row in rows:
+        city = normalize_city(row.get("地市"))
+        if not city:
+            continue
+        item = {"city": city}
+        for source, (key, _label) in metric_sources.items():
+            item[key] = as_float(row_metric(row, source))
+        if city == "全省":
+            province = item
+        else:
+            cities.append(item)
+    if not cities:
+        raise ValueError("地市日清单文件没有具体地市数据")
+    return sorted(cities, key=lambda item: item["city"]), province
+
+
 def build_staff_data(headers: list[str], rows: list[dict]) -> list[dict]:
     require_columns(Path("正式人员月累计"), headers, ["地市", "区县", "装维姓名", "工号"])
     metric_sources = {source: (key, label) for source, key, label in STAFF_METRICS if source in headers}
@@ -214,8 +241,15 @@ def sum_metric(items: list[dict], metric: str) -> float:
     return as_float(sum((number(item.get(metric)) for item in items), Decimal("0")))
 
 
-def build_payload(city_rows: list[dict], province: dict | None, staff_rows: list[dict]) -> dict:
+def build_payload(
+    city_rows: list[dict],
+    province: dict | None,
+    staff_rows: list[dict],
+    daily_city_rows: list[dict],
+    daily_province: dict | None,
+) -> dict:
     city_metric_labels = {key: label for _source, key, label in CITY_METRICS}
+    daily_city_metric_labels = {key: label for _source, key, label in DAILY_CITY_METRICS}
     staff_metric_labels = {key: label for _source, key, label in STAFF_METRICS}
     staff_by_city: dict[str, list[dict]] = {}
     for row in staff_rows:
@@ -224,6 +258,10 @@ def build_payload(city_rows: list[dict], province: dict | None, staff_rows: list
     city_rankings = {
         metric: top_items([row for row in city_rows if metric in row], metric, len(city_rows))
         for metric in [*PRIMARY_CITY_CHARTS, *EFFICIENCY_CHARTS]
+    }
+    daily_city_rankings = {
+        metric: top_items([row for row in daily_city_rows if metric in row], metric, len(daily_city_rows))
+        for metric in DAILY_CITY_CHARTS
     }
     global_staff_rankings = {
         metric: top_items([row for row in staff_rows if metric in row], metric)
@@ -238,6 +276,7 @@ def build_payload(city_rows: list[dict], province: dict | None, staff_rows: list
     }
 
     province_data = province or {}
+    daily_province_data = daily_province or {}
     city_count = len(city_rows)
     staff_count = len(staff_rows)
     kpis = [
@@ -248,18 +287,28 @@ def build_payload(city_rows: list[dict], province: dict | None, staff_rows: list
         {"label": "151装维量", "value": province_data.get("service_151", sum_metric(city_rows, "service_151")), "unit": "单"},
         {"label": "FTTR-H/B装维量", "value": province_data.get("fttr_hb", sum_metric(city_rows, "fttr_hb")), "unit": "单"},
     ]
+    daily_kpis = [
+        {"label": "当日价值积分", "value": daily_province_data.get("value_score", sum_metric(daily_city_rows, "value_score")), "unit": "分"},
+        {"label": "当日151装维量", "value": daily_province_data.get("service_151", sum_metric(daily_city_rows, "service_151")), "unit": "单"},
+        {"label": "当日FTTR-H/B", "value": daily_province_data.get("fttr_hb", sum_metric(daily_city_rows, "fttr_hb")), "unit": "单"},
+    ]
 
     return {
         "kpis": kpis,
+        "dailyKpis": daily_kpis,
         "cities": city_rows,
+        "dailyCities": daily_city_rows,
         "cityMetricLabels": city_metric_labels,
+        "dailyCityMetricLabels": daily_city_metric_labels,
         "staffMetricLabels": staff_metric_labels,
         "cityRankings": city_rankings,
+        "dailyCityRankings": daily_city_rankings,
         "globalStaffRankings": global_staff_rankings,
         "cityStaffRankings": city_staff_rankings,
         "cityStaffCounts": {city: len(rows) for city, rows in staff_by_city.items()},
         "primaryCityCharts": PRIMARY_CITY_CHARTS,
         "efficiencyCharts": EFFICIENCY_CHARTS,
+        "dailyCityCharts": DAILY_CITY_CHARTS,
         "globalStaffCharts": GLOBAL_STAFF_CHARTS,
     }
 
@@ -271,7 +320,7 @@ def default_output_path(root: Path, acct_day: str) -> Path:
     return root / "output" / f"各地市随销月累计大屏_{suffix}.html"
 
 
-def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str, month_id: str) -> str:
+def render_html(payload: dict, city_file: Path, staff_file: Path, daily_city_file: Path, acct_day: str, month_id: str) -> str:
     data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     title_date = format_day(acct_day)
     month_text = month_id or (re.sub(r"\D", "", acct_day)[:6] if acct_day else "-")
@@ -528,7 +577,8 @@ def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str,
       </div>
       <div class="meta">
         <div>生成时间：{escape(generated_at)}</div>
-        <div>地市数据：{escape(city_file.name)}</div>
+        <div>月累计地市：{escape(city_file.name)}</div>
+        <div>当日地市：{escape(daily_city_file.name)}</div>
         <div>人员数据：{escape(staff_file.name)}</div>
       </div>
     </header>
@@ -549,6 +599,13 @@ def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str,
           </div>
           <div class="chart" id="efficiency-chart"></div>
         </section>
+        <section class="panel" style="margin-top:16px;">
+          <div class="panel-head">
+            <h2>当日地市表现</h2>
+            <div class="tabs" id="daily-tabs"></div>
+          </div>
+          <div class="chart" id="daily-chart"></div>
+        </section>
       </div>
       <div>
         <section class="panel">
@@ -568,6 +625,7 @@ def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str,
     const fmt = new Intl.NumberFormat('zh-CN', {{ maximumFractionDigits: 2 }});
     let cityMetric = DATA.primaryCityCharts[0];
     let efficiencyMetric = DATA.efficiencyCharts[0];
+    let dailyMetric = DATA.dailyCityCharts[0];
     let staffMetric = DATA.globalStaffCharts[0];
     let selectedCity = '全省';
 
@@ -640,6 +698,11 @@ def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str,
       renderTabs('efficiency-tabs', DATA.efficiencyCharts, DATA.cityMetricLabels, efficiencyMetric, setEfficiencyMetric);
       renderBars('efficiency-chart', DATA.cityRankings[efficiencyMetric], efficiencyMetric, DATA.cityMetricLabels);
     }}
+    function setDailyMetric(metric) {{
+      dailyMetric = metric;
+      renderTabs('daily-tabs', DATA.dailyCityCharts, DATA.dailyCityMetricLabels, dailyMetric, setDailyMetric);
+      renderBars('daily-chart', DATA.dailyCityRankings[dailyMetric], dailyMetric, DATA.dailyCityMetricLabels);
+    }}
     function setStaffMetric(metric) {{
       staffMetric = metric;
       renderTabs('staff-tabs', DATA.globalStaffCharts, DATA.staffMetricLabels, staffMetric, setStaffMetric);
@@ -649,9 +712,11 @@ def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str,
       renderKpis();
       renderTabs('city-tabs', DATA.primaryCityCharts, DATA.cityMetricLabels, cityMetric, setCityMetric);
       renderTabs('efficiency-tabs', DATA.efficiencyCharts, DATA.cityMetricLabels, efficiencyMetric, setEfficiencyMetric);
+      renderTabs('daily-tabs', DATA.dailyCityCharts, DATA.dailyCityMetricLabels, dailyMetric, setDailyMetric);
       renderTabs('staff-tabs', DATA.globalStaffCharts, DATA.staffMetricLabels, staffMetric, setStaffMetric);
       renderBars('city-chart', DATA.cityRankings[cityMetric], cityMetric, DATA.cityMetricLabels);
       renderBars('efficiency-chart', DATA.cityRankings[efficiencyMetric], efficiencyMetric, DATA.cityMetricLabels);
+      renderBars('daily-chart', DATA.dailyCityRankings[dailyMetric], dailyMetric, DATA.dailyCityMetricLabels);
       renderCityStrip();
       renderStaff();
     }}
@@ -665,6 +730,7 @@ def render_html(payload: dict, city_file: Path, staff_file: Path, acct_day: str,
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成各地市随销月累计大屏 HTML")
     parser.add_argument("--city-file", help="地市月累计 Excel；默认从 temp/data 自动查找")
+    parser.add_argument("--daily-city-file", help="各地市装维日清单 Excel；默认从 temp/data 自动查找")
     parser.add_argument("--staff-file", help="正式人员月累计 Excel；默认从 temp/data 自动查找")
     parser.add_argument("--acct-day", help="截至日期 YYYYMMDD；未传时优先从地市文件名解析")
     parser.add_argument("--month-id", help="账期 YYYYMM；未传时优先从地市文件名或 acct_day 推断")
@@ -678,6 +744,12 @@ def main() -> None:
         ["*各地市装维月累计*.xlsx", "*装维月累计_地市汇总*.xlsx"],
         "地市月累计",
     )
+    daily_city_file = resolve_input(
+        root,
+        args.daily_city_file,
+        ["*装维日清单_地市汇总*.xlsx", "*各地市装维日清单*.xlsx"],
+        "地市日清单",
+    )
     staff_file = resolve_input(
         root,
         args.staff_file,
@@ -686,10 +758,12 @@ def main() -> None:
     )
 
     city_headers, city_raw_rows = read_excel_rows(city_file)
+    daily_city_headers, daily_city_raw_rows = read_excel_rows(daily_city_file)
     staff_headers, staff_raw_rows = read_excel_rows(staff_file)
     city_rows, province = build_city_data(city_headers, city_raw_rows)
+    daily_city_rows, daily_province = build_daily_city_data(daily_city_headers, daily_city_raw_rows)
     staff_rows = build_staff_data(staff_headers, staff_raw_rows)
-    payload = build_payload(city_rows, province, staff_rows)
+    payload = build_payload(city_rows, province, staff_rows, daily_city_rows, daily_province)
 
     parsed_day, parsed_month = parse_dates_from_name(city_file)
     acct_day = args.acct_day or parsed_day
@@ -702,13 +776,15 @@ def main() -> None:
     else:
         output = default_output_path(root, acct_day)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(render_html(payload, city_file, staff_file, acct_day, month_id), encoding="utf-8")
+    output.write_text(render_html(payload, city_file, staff_file, daily_city_file, acct_day, month_id), encoding="utf-8")
 
     print("=== 各地市随销月累计大屏 ===")
-    print(f"地市文件: {city_file}")
+    print(f"月累计地市文件: {city_file}")
+    print(f"当日地市文件: {daily_city_file}")
     print(f"人员文件: {staff_file}")
     print(f"输出文件: {output}")
     print(f"地市行数: {len(city_rows)}")
+    print(f"当日地市行数: {len(daily_city_rows)}")
     print(f"人员行数: {len(staff_rows)}")
 
 
