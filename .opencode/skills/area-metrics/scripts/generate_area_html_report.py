@@ -46,6 +46,7 @@ SINGLE_COLUMNS = [
 ]
 MONTHLY_HIDDEN_SINGLE_COLUMNS = {"总人数含班长", "总人数不含班长"}
 WIDE_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分"}
+MONTHLY_INTEGER_SINGLE_COLUMNS = {"发展积分", "运营积分", "价值积分"}
 HIGHLIGHT_COUNT = 3
 FOCUS_LIMIT = 5
 FOCUS_METRICS = [
@@ -218,7 +219,12 @@ def build_columns(headers: list[str], report_kind: str = "standard") -> tuple[li
         if report_kind == "monthly" and key in MONTHLY_HIDDEN_SINGLE_COLUMNS:
             continue
         if key in headers:
-            singles.append({"key": key, "label": key, "rowspan": 2, "kind": "number"})
+            kind = "number"
+            if report_kind == "monthly" and key in MONTHLY_INTEGER_SINGLE_COLUMNS:
+                kind = "integer"
+            elif report_kind == "monthly" and key == "人均FTTR-H/B":
+                kind = "one_decimal"
+            singles.append({"key": key, "label": key, "rowspan": 2, "kind": kind})
     return fixed + grouped, singles
 
 
@@ -264,6 +270,12 @@ def format_number(value, kind: str) -> str:
     if kind == "ratio":
         pct = (number * Decimal("100")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
         return f"{pct}%"
+    if kind == "integer":
+        rounded = number.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        return f"{int(rounded):,}"
+    if kind == "one_decimal":
+        rounded = number.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        return f"{rounded:,.1f}"
     if number == number.to_integral_value():
         return f"{int(number):,}"
     rounded = number.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
