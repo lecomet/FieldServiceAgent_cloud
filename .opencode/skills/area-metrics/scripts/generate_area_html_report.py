@@ -46,7 +46,7 @@ SINGLE_COLUMNS = [
 ]
 MONTHLY_HIDDEN_SINGLE_COLUMNS = {"总人数含班长", "总人数不含班长"}
 WIDE_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分"}
-MONTHLY_INTEGER_SINGLE_COLUMNS = {"发展积分", "运营积分", "价值积分"}
+MONTHLY_INTEGER_SINGLE_COLUMNS = {"加载积分", "发展积分", "运营积分", "价值积分", "评价积分"}
 HIGHLIGHT_COUNT = 3
 FOCUS_LIMIT = 5
 FOCUS_METRICS = [
